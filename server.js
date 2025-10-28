@@ -8,7 +8,16 @@ import { Sequelize, DataTypes } from "sequelize";
 
 
 const app = express();
-app.use(cors());
+app.use(
+  cors({
+    origin: [
+      "https://92355.github.io",          // ✅ GitHub Pages 도메인
+      "https://oojinwoo-front.onrender.com", // (혹시 Vercel이나 Render Front도 쓴다면 추가)
+    ],
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    credentials: true,
+  })
+);
 app.use(express.json());
 
 const sequelize = new Sequelize(
