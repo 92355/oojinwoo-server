@@ -1,10 +1,11 @@
+import dotenv from "dotenv";
+dotenv.config();
 import express from "express";
 import cors from "cors";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { Sequelize, DataTypes } from "sequelize";
-import dotenv from "dotenv";
-dotenv.config();
+
 
 const app = express();
 app.use(cors());
