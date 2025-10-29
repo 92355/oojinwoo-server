@@ -40,7 +40,13 @@ const User = sequelize.define("User", {
   username: { type: DataTypes.STRING, unique: true, allowNull: false },
   password: { type: DataTypes.STRING, allowNull: false },
   name: { type: DataTypes.STRING, allowNull: false },
+  role: {                    
+    type: DataTypes.ENUM("user", "admin"),
+    defaultValue: "user",
+  },
 });
+
+await sequelize.sync({ alter: true });
 
 const Post = sequelize.define("Post", {
   title: { type: DataTypes.STRING, allowNull: false },
@@ -69,18 +75,18 @@ Comment.belongsTo(Post, { foreignKey: "postId" });
 await sequelize.sync({ alter: true });
 //
 
-// ✅ 인증 미들웨어
 function auth(req, res, next) {
   const token = req.headers.authorization?.split(" ")[1];
   if (!token) return res.status(401).json({ error: "로그인이 필요합니다." });
   try {
     const decoded = jwt.verify(token, SECRET);
-    req.user = decoded;
+    req.user = decoded; // ✅ { id, role } 저장
     next();
   } catch {
     res.status(403).json({ error: "토큰이 유효하지 않습니다." });
   }
 }
+
 
 // ✅ 회원가입
 app.post("/api/register", async (req, res) => {
@@ -91,15 +97,25 @@ app.post("/api/register", async (req, res) => {
 });
 
 // ✅ 로그인
+// ✅ 로그인
 app.post("/api/login", async (req, res) => {
   const { username, password } = req.body;
   const user = await User.findOne({ where: { username } });
   if (!user) return res.status(401).json({ error: "존재하지 않는 사용자입니다." });
+
   const valid = await bcrypt.compare(password, user.password);
   if (!valid) return res.status(401).json({ error: "비밀번호가 틀립니다." });
-  const token = jwt.sign({ id: user.id }, SECRET, { expiresIn: "7d" });
+
+  // ✅ role 포함
+  const token = jwt.sign(
+    { id: user.id, role: user.role },
+    SECRET,
+    { expiresIn: "7d" }
+  );
+
   res.json({ token, user });
 });
+
 
 // ✅ 내 프로필
 app.get("/api/profile", auth, async (req, res) => {
@@ -153,11 +169,27 @@ app.get("/api/posts/:id/comments", async (req, res) => {
 app.delete("/api/comments/:id", auth, async (req, res) => {
   const comment = await Comment.findByPk(req.params.id);
   if (!comment) return res.status(404).json({ error: "댓글 없음" });
-  if (comment.userId !== req.user.id)
+
+  // ✅ 관리자 or 본인만 가능
+  if (req.user.role !== "admin" && comment.userId !== req.user.id)
     return res.status(403).json({ error: "삭제 권한 없음" });
 
   await comment.destroy();
   res.json({ message: "삭제 완료" });
+});
+
+// ✅ 댓글 수정
+app.put("/api/comments/:id", auth, async (req, res) => {
+  const comment = await Comment.findByPk(req.params.id);
+  if (!comment) return res.status(404).json({ error: "댓글 없음" });
+
+  // ✅ 관리자 or 본인만 가능
+  if (req.user.role !== "admin" && comment.userId !== req.user.id)
+    return res.status(403).json({ error: "수정 권한 없음" });
+
+  comment.content = req.body.content;
+  await comment.save();
+  res.json(comment);
 });
 /////////////////
 // ✅ 게시글 목록 (작성자 포함)
@@ -200,40 +232,39 @@ app.get("/api/mycomments", auth, async (req, res) => {
   res.json(comments);
 });
 
-// ✅ 댓글 수정
-app.put("/api/comments/:id", auth, async (req, res) => {
-  const comment = await Comment.findByPk(req.params.id);
-  if (!comment) return res.status(404).json({ error: "댓글 없음" });
-  if (comment.userId !== req.user.id)
-    return res.status(403).json({ error: "수정 권한 없음" });
 
-  comment.content = req.body.content;
-  await comment.save();
-  res.json(comment);
-});
 
 
 // ✅ 게시글 수정
+
 app.put("/api/posts/:id", auth, async (req, res) => {
   const post = await Post.findByPk(req.params.id);
   if (!post) return res.status(404).json({ error: "게시글 없음" });
-  if (post.userId !== req.user.id)
+
+  // ✅ 관리자 or 본인만 가능
+  if (req.user.role !== "admin" && post.userId !== req.user.id)
     return res.status(403).json({ error: "수정 권한이 없습니다." });
+
   post.title = req.body.title;
   post.content = req.body.content;
   await post.save();
   res.json(post);
 });
 
+
 // ✅ 게시글 삭제
 app.delete("/api/posts/:id", auth, async (req, res) => {
   const post = await Post.findByPk(req.params.id);
   if (!post) return res.status(404).json({ error: "게시글 없음" });
-  if (post.userId !== req.user.id)
+
+  // ✅ 관리자 or 본인만 가능
+  if (req.user.role !== "admin" && post.userId !== req.user.id)
     return res.status(403).json({ error: "삭제 권한이 없습니다." });
+
   await post.destroy();
   res.json({ message: "삭제 완료" });
 });
+
 
 app.listen(4000, "0.0.0.0", () => {
   console.log("✅ 서버 외부 접근 허용: http://<내 IP>:4000");
