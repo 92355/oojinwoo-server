@@ -11,7 +11,7 @@ const app = express();
 app.use(
   cors({
     origin: [
-      "https://92355.github.io",          // ✅ GitHub Pages 도메인
+      "https://92355.github.io",          //  GitHub Pages 도메인
       "https://oojinwoo-front.onrender.com", // (혹시 Vercel이나 Render Front도 쓴다면 추가)
     ],
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
@@ -80,7 +80,7 @@ function auth(req, res, next) {
   if (!token) return res.status(401).json({ error: "로그인이 필요합니다." });
   try {
     const decoded = jwt.verify(token, SECRET);
-    req.user = decoded; // ✅ { id, role } 저장
+    req.user = decoded; //  { id, role } 저장
     next();
   } catch {
     res.status(403).json({ error: "토큰이 유효하지 않습니다." });
@@ -88,7 +88,7 @@ function auth(req, res, next) {
 }
 
 
-// ✅ 회원가입
+//  회원가입
 app.post("/api/register", async (req, res) => {
   const { username, password, name } = req.body;
   const hash = await bcrypt.hash(password, 10);
@@ -96,8 +96,8 @@ app.post("/api/register", async (req, res) => {
   res.json({ message: "회원가입 성공" });
 });
 
-// ✅ 로그인
-// ✅ 로그인
+//  로그인
+//  로그인
 app.post("/api/login", async (req, res) => {
   const { username, password } = req.body;
   const user = await User.findOne({ where: { username } });
@@ -106,7 +106,7 @@ app.post("/api/login", async (req, res) => {
   const valid = await bcrypt.compare(password, user.password);
   if (!valid) return res.status(401).json({ error: "비밀번호가 틀립니다." });
 
-  // ✅ role 포함
+  //  role 포함
   const token = jwt.sign(
     { id: user.id, role: user.role },
     SECRET,
@@ -116,8 +116,7 @@ app.post("/api/login", async (req, res) => {
   res.json({ token, user });
 });
 
-
-// ✅ 내 프로필
+//  내 프로필
 app.get("/api/profile", auth, async (req, res) => {
   const user = await User.findByPk(req.user.id, {
     attributes: ["id", "username", "name", "createdAt"],
@@ -125,13 +124,13 @@ app.get("/api/profile", auth, async (req, res) => {
   res.json(user);
 });
 
-// ✅ 회원탈퇴
+//  회원탈퇴
 app.delete("/api/profile", auth, async (req, res) => {
   await User.destroy({ where: { id: req.user.id } });
   res.json({ message: "회원탈퇴 완료" });
 });
 
-// ✅ 게시글 작성
+//  게시글 작성
 app.post("/api/posts", auth, async (req, res) => {
   const post = await Post.create({
     title: req.body.title,
@@ -142,7 +141,7 @@ app.post("/api/posts", auth, async (req, res) => {
 });
 
 ////////////////
-// ✅ 댓글 작성
+//  댓글 작성
 app.post("/api/posts/:id/comments", auth, async (req, res) => {
   const { content } = req.body;
   const postId = req.params.id;
@@ -154,7 +153,7 @@ app.post("/api/posts/:id/comments", auth, async (req, res) => {
   res.json(comment);
 });
 
-// ✅ 댓글 목록 불러오기
+//  댓글 목록 불러오기
 app.get("/api/posts/:id/comments", async (req, res) => {
   const postId = req.params.id;
   const comments = await Comment.findAll({
@@ -165,12 +164,12 @@ app.get("/api/posts/:id/comments", async (req, res) => {
   res.json(comments);
 });
 
-// ✅ 댓글 삭제
+//  댓글 삭제
 app.delete("/api/comments/:id", auth, async (req, res) => {
   const comment = await Comment.findByPk(req.params.id);
   if (!comment) return res.status(404).json({ error: "댓글 없음" });
 
-  // ✅ 관리자 or 본인만 가능
+  //  관리자 or 본인만 가능
   if (req.user.role !== "admin" && comment.userId !== req.user.id)
     return res.status(403).json({ error: "삭제 권한 없음" });
 
@@ -178,12 +177,12 @@ app.delete("/api/comments/:id", auth, async (req, res) => {
   res.json({ message: "삭제 완료" });
 });
 
-// ✅ 댓글 수정
+//  댓글 수정
 app.put("/api/comments/:id", auth, async (req, res) => {
   const comment = await Comment.findByPk(req.params.id);
   if (!comment) return res.status(404).json({ error: "댓글 없음" });
 
-  // ✅ 관리자 or 본인만 가능
+  //  관리자 or 본인만 가능
   if (req.user.role !== "admin" && comment.userId !== req.user.id)
     return res.status(403).json({ error: "수정 권한 없음" });
 
@@ -192,7 +191,7 @@ app.put("/api/comments/:id", auth, async (req, res) => {
   res.json(comment);
 });
 /////////////////
-// ✅ 게시글 목록 (작성자 포함)
+//  게시글 목록 (작성자 포함)
 app.get("/api/posts", async (req, res) => {
   const posts = await Post.findAll({
     attributes: ["id", "title", "content", "userId", "createdAt"],
@@ -202,7 +201,7 @@ app.get("/api/posts", async (req, res) => {
   res.json(posts);
 });
 
-// ✅ 특정 유저의 게시글 (내 게시글)
+//  특정 유저의 게시글 (내 게시글)
 app.get("/api/myposts", auth, async (req, res) => {
   const posts = await Post.findAll({
     where: { userId: req.user.id },
@@ -219,7 +218,7 @@ app.get("/api/posts/:id", async (req, res) => {
   if (!post) return res.status(404).json({ error: "게시글 없음" });
   res.json(post);
 });
-// ✅ 내 댓글 목록
+//  내 댓글 목록
 app.get("/api/mycomments", auth, async (req, res) => {
   const comments = await Comment.findAll({
     where: { userId: req.user.id },
@@ -235,13 +234,13 @@ app.get("/api/mycomments", auth, async (req, res) => {
 
 
 
-// ✅ 게시글 수정
+//  게시글 수정
 
 app.put("/api/posts/:id", auth, async (req, res) => {
   const post = await Post.findByPk(req.params.id);
   if (!post) return res.status(404).json({ error: "게시글 없음" });
 
-  // ✅ 관리자 or 본인만 가능
+  //  관리자 or 본인만 가능
   if (req.user.role !== "admin" && post.userId !== req.user.id)
     return res.status(403).json({ error: "수정 권한이 없습니다." });
 
@@ -252,12 +251,12 @@ app.put("/api/posts/:id", auth, async (req, res) => {
 });
 
 
-// ✅ 게시글 삭제
+//  게시글 삭제
 app.delete("/api/posts/:id", auth, async (req, res) => {
   const post = await Post.findByPk(req.params.id);
   if (!post) return res.status(404).json({ error: "게시글 없음" });
 
-  // ✅ 관리자 or 본인만 가능
+  //  관리자 or 본인만 가능
   if (req.user.role !== "admin" && post.userId !== req.user.id)
     return res.status(403).json({ error: "삭제 권한이 없습니다." });
 
